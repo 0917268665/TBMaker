@@ -295,7 +295,7 @@
                 '            <div class="flex justify-between items-end">',
                 '                <div>',
                 '                    <p class="text-[10px] font-bold tracking-[0.2em] opacity-80 uppercase mb-1">行動說明會(測試中)</p>',
-                `                    <h1 class="text-xl font-bold leading-tight line-clamp-1">${data.tripName}</h1>`,
+                `                    <h1 class="text-xl font-bold leading-tight">${data.tripName}</h1>`,
                 '                    <p class="text-xs opacity-90 mt-1 font-light flex items-center gap-2">',
                 `                        <span><i class="far fa-calendar-alt mr-1"></i> ${data.meeting.date} 出發</span>`,
                 `                        <span class="bg-white/20 px-2 py-0.5 rounded text-[10px]">${data.tripCode}</span>`,
@@ -340,7 +340,7 @@
                 '                    </div>',
                 '                    <div class="text-right pl-2 border-l border-dashed border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center min-w-[70px]">',
                 `                        <p class="text-[10px] text-gray-400 mb-1">導遊 ${data.guide.name}</p>`,
-                `                        <a href="tel:${data.guide.twPhone}" class="flex flex-col items-center justify-center w-12 h-12 bg-green-500 text-white rounded-full shadow-lg active:scale-95 transition-transform"><i class="fas fa-phone text-xl"></i></a>`,
+                `                        <button onclick="callGuide('${data.guide.twPhone}')" class="flex flex-col items-center justify-center w-12 h-12 bg-green-500 text-white rounded-full shadow-lg active:scale-95 transition-transform"><i class="fas fa-phone text-xl"></i></button>`,
                 `                        <p class="text-[10px] text-gray-500 mt-1">${data.guide.twPhone}</p>`,
                 '                    </div>',
                 '                </div>',
@@ -399,7 +399,7 @@
                 '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors border-l-4 border-yellow-500">',
                 '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-2"><i class="fas fa-hand-holding-usd text-yellow-500 mr-2"></i>服務費說明</h3>',
                 '                <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">',
-                `                    本行程導遊司機的服務費每位旅客每天 <span class="font-bold text-jp-red">${data.info.tips.currency} ${data.info.tips.perDay} 元</span>，`,
+                `                    本行程導遊司機的服務費為，每位旅客每天 <span class="font-bold text-jp-red">${data.info.tips.currency} ${data.info.tips.perDay} 元</span>，`,
                 `                    ${data.info.tips.days} 天共 <span class="font-bold text-jp-red">${data.info.tips.currency} ${totalTips} 元</span>，`,
                 '                    請一律在日本當地支付給導遊。',
                 '                </p>',
@@ -412,9 +412,9 @@
                     <div class="flex justify-between text-sm mb-1 text-gray-600 dark:text-gray-300">
                         <span class="font-bold">${f.type} ${f.code}</span><span>${f.date}</span>
                     </div>
-                    <div class="flex justify-between items-center text-gray-800 dark:text-white">
+                    <div class="grid grid-cols-[1fr_auto_1fr] items-center text-gray-800 dark:text-white">
                         <div><div class="text-xl font-bold">${f.depTime}</div><div class="text-xs opacity-60">${f.depAirport}</div></div>
-                        <i class="fas fa-arrow-right opacity-40"></i>
+                        <div class="text-center"><i class="fas fa-arrow-right opacity-40"></i></div>
                         <div class="text-right"><div class="text-xl font-bold">${f.arrTime}</div><div class="text-xs opacity-60">${f.arrAirport}</div></div>
                     </div>
                 </div>`).join(''),
@@ -672,10 +672,10 @@
                 '',
                 '                <div class="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">',
                 '                    <p class="text-xs text-gray-400 font-bold">團體專屬聯絡人</p>',
-                `                    <a href="tel:${data.guide.twPhone}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                `                    <div onclick="callGuide('${data.guide.twPhone}')" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer">
                                         <div><p class="font-bold text-sm dark:text-gray-200">導遊 ${data.guide.name}</p><p class="text-xs text-gray-400">${data.guide.twPhone}</p></div>
                                         <div class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i class="fas fa-phone"></i></div>
-                                    </a>`,
+                                    </div>`,
                 `                    <a href="tel:${data.meeting.airportStaff ? data.meeting.airportStaff.split(' ').pop() : ''}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                         <div><p class="font-bold text-sm dark:text-gray-200">機場專員</p><p class="text-xs text-gray-400">${data.meeting.airportStaff || '無資訊'}</p></div>
                                         <div class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i class="fas fa-phone"></i></div>
@@ -1102,6 +1102,11 @@
                 '                u.onend = function() { document.getElementById(\'speak-status\').innerText = \'\'; };',
                 '                window.speechSynthesis.speak(u);',
                 '            }',
+                '        }',
+                '',
+                '        function callGuide(phone) {',
+                '            alert("如果導遊沒有接聽，可能是在日本帶團中，請見諒。\\n\\n因導遊通常在出發前1天才會拿到旅客資料，如果您有想詢問的事項，建議在出發前一天在詢問導遊，會比較能提供協助。\\n\\n如想先詢問可以洽詢您的業務。");',
+                '            window.location.href = \'tel:\' + phone;',
                 '        }',
                 '',
                 '        // Init',
