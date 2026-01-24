@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>行前說明會產生器 V32 (總表CSV格式修正版)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 補上 Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        'jp-indigo': '#2B3A55',
+                        'jp-red': '#B93E38',
+                        'jp-bg': '#F5F5F0',
+                        'jp-dark': '#1a202c',
+                        'jp-card-dark': '#2d3748'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        body { background-color: #f0f2f5; font-family: "Microsoft JhengHei", -apple-system, sans-serif; }
+        
+        .phone-frame {
+            border: 14px solid #1a1a1a;
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            background: white;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: #1a1a1a;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 預設資料 ---
+        const DEFAULT_DATA = {
+            tripName: "冬季典藏名古屋幻彩點燈x御在所樹冰玩雪趣5日-JX8277",
+            tripCode: "2026NGO0213JX05A",
+            dateRange: "2026/02/13", 
+            meeting: { 
+                date: "2026/02/13", 
+                time: "12:25", 
+                location: "桃園國際機場第一航站 星宇航空\n團體櫃台前集合", 
+                badge: "日本精緻假期(紅)", 
+                airportStaff: "曾仁杰 0910-008-139" 
+            },
+            guide: { name: "游馥育", twPhone: "0958-105-306", localPhone: "080-3975-5756" },
+            flights: [
+                { 
+                    type: "去程", airline: "星宇航空", code: "JX838", date: "02/13",
+                    depTime: "14:55", depAirport: "TPE 桃園", 
+                    arrTime: "18:30", arrAirport: "NGO 名古屋" 
+                },
+                { 
+                    type: "回程", airline: "星宇航空", code: "JX839", date: "02/17",
+                    depTime: "19:40", depAirport: "NGO 名古屋", 
+                    arrTime: "22:10", arrAirport: "TPE 桃園" 
+                }
+            ],
+            days: [
+                { 
+                    day: 1, 
+                    date: "2/13", 
+                    location: "名古屋", 
+                    lat: 34.85, lon: 136.81, 
+                    spots: [{ name: "中部國際空港", desc: "抵達名古屋，前往飯店休息。" }],
+                    meals: { b: "機上", l: "機上", d: "日式便當+茶" },
+                    hotel: "Comfort 中部國際空港 飯店",
+                    hotelTel: "0569-38-7211",
+                    hotelAddress: "愛知県常滑市セントレア4-2-3"
+                },
+                { 
+                    day: 2, 
+                    date: "2/14", 
+                    location: "高山", 
+                    lat: 36.14, lon: 137.25,
+                    spots: [
+                        { name: "惠那峡展望台", desc: "欣賞壯麗的峽谷景色。" },
+                        { name: "惠那峽遊船", desc: "搭乘遊船近距離觀賞奇岩怪石。" }
+                    ],
+                    meals: { b: "飯店內", l: "風味餐", d: "飯店內" },
+                    hotel: "Hotel and Spa 高山飯店",
+                    hotelTel: "0577-32-6210",
+                    hotelAddress: "岐阜県高山市天満町5-13"
+                },
+                { 
+                    day: 3, 
+                    date: "2/15", 
+                    location: "下呂", 
+                    lat: 35.80, lon: 137.24,
+                    spots: [
+                        { name: "白川鄉合掌村", desc: "世界文化遺產，童話般的合掌造建築。" }
+                    ],
+                    meals: { b: "飯店內", l: "飛驒牛風味餐", d: "飯店內自助餐" },
+                    hotel: "大江戶溫泉物語 下呂本館飯店",
+                    hotelTel: "050-3615-3456",
+                    hotelAddress: "岐阜県下呂市湯之島535"
+                },
+                { 
+                    day: 4, 
+                    date: "2/16", 
+                    location: "名古屋", 
+                    lat: 35.18, lon: 136.90,
+                    spots: [
+                        { name: "犬山城", desc: "日本國寶五城之一，歷史悠久。" }
+                    ],
+                    meals: { b: "飯店內", l: "日式定食", d: "方便遊玩敬請自理" },
+                    hotel: "名古屋東急 飯店",
+                    hotelTel: "052-251-2411",
+                    hotelAddress: "愛知県名古屋市中区栄4-6-8"
+                },
+                { 
+                    day: 5, 
+                    date: "2/17", 
+                    location: "台北", 
+                    lat: 25.03, lon: 121.56,
+                    spots: [
+                        { name: "中部國際空港", desc: "搭機返回溫暖的家。" }
+                    ],
+                    meals: { b: "飯店內", l: "機上", d: "溫暖的家" },
+                    hotel: "溫暖的家",
+                    hotelTel: "",
+                    hotelAddress: ""
+                }
+            ],
+            info: {
+                weather: "2月氣溫約0-8度，山區會更冷且有雪。請務必準備保暖大衣、手套、圍巾、毛帽及防滑鞋。",
+                currency: "日幣 (JPY)。建議台灣先換匯。許多店家可刷卡或用 PayPay/LINE Pay。",
+                voltage: "100V 雙孔扁插 (與台灣相同，免轉接頭)。",
+                baggage: "嚴禁攜帶肉類入境。行動電源請隨身攜帶。每人托運行李通常為1件23公斤(依航空公司規定)。",
+                imageRoot: "",
+                pdfPath: "",
+                tips: {
+                    perDay: 300,
+                    days: 5,
+                    currency: "新台幣"
+                }
+            }
+        };
+
+        const CITIES = {
+            "台北": { lat: 25.03, lon: 121.56 },
+            "東京": { lat: 35.68, lon: 139.76 },
+            "大阪": { lat: 34.69, lon: 135.50 },
+            "京都": { lat: 35.01, lon: 135.76 },
+            "名古屋": { lat: 35.18, lon: 136.90 },
+            "高山": { lat: 36.14, lon: 137.25 },
+            "白川鄉": { lat: 36.25, lon: 136.90 },
+            "下呂": { lat: 35.80, lon: 137.24 },
+            "仙台": { lat: 38.26, lon: 140.86 },
+            "山形(藏王)": { lat: 38.25, lon: 140.33 },
+            "福島(會津)": { lat: 37.49, lon: 139.93 },
+            "青森": { lat: 40.82, lon: 140.74 },
+            "岩手(盛岡)": { lat: 39.70, lon: 141.15 },
+            "秋田": { lat: 39.72, lon: 140.10 },
+            "福岡": { lat: 33.59, lon: 130.40 },
+            "別府": { lat: 33.28, lon: 131.50 },
+            "熊本": { lat: 32.80, lon: 130.70 },
+            "長崎": { lat: 32.75, lon: 129.87 }
+        };
+
+        // --- Client HTML 生成 ---
+        function getClientHtml(data) {
+            const jsonStr = JSON.stringify(data);
+            
+            // 識別牌顏色邏輯
+            let badgeColorClass = "bg-blue-600";
+            if (data.meeting.badge.includes("紅")) badgeColorClass = "bg-red-600";
+            else if (data.meeting.badge.includes("黃")) badgeColorClass = "bg-yellow-500";
+            else if (data.meeting.badge.includes("綠")) badgeColorClass = "bg-green-600";
+            
+            // 計算總服務費
+            const totalTips = (data.info.tips.perDay * data.info.tips.days).toLocaleString();
+            
+            const htmlParts = [
+                '<!DOCTYPE html>',
+                '<html lang="zh-TW">',
+                '<head>',
+                '    <meta charset="UTF-8">',
+                '    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">',
+                `    <title>${data.tripName}</title>`,
+                '    <script src="https://cdn.tailwindcss.com"><\/script>',
+                '    <script>',
+                '        tailwind.config = {',
+                '            darkMode: "media",',
+                '            theme: {',
+                '                extend: {',
+                '                    colors: {',
+                '                        "jp-indigo": "#2B3A55",',
+                '                        "jp-red": "#B93E38",',
+                '                        "jp-bg": "#F5F5F0",',
+                '                        "jp-dark": "#1a202c",',
+                '                        "jp-card-dark": "#2d3748"',
+                '                    }',
+                '                }',
+                '            }',
+                '        }',
+                '    <\/script>',
+                '    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">',
+                '    <style>',
+                '        @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap");',
+                '        body { font-family: "Noto Sans TC", "Noto Sans JP", sans-serif; background-color: #F5F5F0; -webkit-tap-highlight-color: transparent; }',
+                '        .no-scrollbar::-webkit-scrollbar { display: none; }',
+                '        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }',
+                '        .card-shadow { box-shadow: 0 4px 15px rgba(0,0,0,0.05); }',
+                '        .seigaiha-pattern {',
+                '            background-color: #2B3A55;',
+                '            background-image: radial-gradient(circle at 100% 150%, #2B3A55 24%, #364663 25%, #364663 28%, #2B3A55 29%, #2B3A55 36%, #364663 36%, #364663 40%, transparent 40%, transparent),',
+                '            radial-gradient(circle at 0 150%, #2B3A55 24%, #364663 25%, #364663 28%, #2B3A55 29%, #2B3A55 36%, #364663 36%, #364663 40%, transparent 40%, transparent),',
+                '            radial-gradient(circle at 50%  100%, #364663 10%, #2B3A55 11%, #2B3A55 23%, #364663 24%, #364663 30%, #2B3A55 31%, #2B3A55 43%, #364663 44%, #364663 50%, #2B3A55 51%, #2B3A55 63%, #364663 64%, #364663 71%, transparent 71%, transparent),',
+                '            radial-gradient(circle at 100% 50%, #364663 5%, #2B3A55 6%, #2B3A55 15%, #364663 16%, #364663 20%, #2B3A55 21%, #2B3A55 30%, #364663 31%, #364663 35%, #2B3A55 36%, #2B3A55 45%, #364663 46%, #364663 49%, transparent 50%, transparent),',
+                '            radial-gradient(circle at 0 50%, #364663 5%, #2B3A55 6%, #2B3A55 15%, #364663 16%, #364663 20%, #2B3A55 21%, #2B3A55 30%, #364663 31%, #364663 35%, #2B3A55 36%, #2B3A55 45%, #364663 46%, #364663 49%, transparent 50%, transparent);',
+                '            background-size: 30px 15px;',
+                '        }',
+                '        .tab-active { color: #2B3A55; border-bottom: 3px solid #B93E38; font-weight: 700; }',
+                '        @media (prefers-color-scheme: dark) {',
+                '            .tab-active { color: #ffffff; border-bottom: 3px solid #F87171; }',
+                '            .seigaiha-pattern { background-color: #1a202c; }',
+                '        }',
+                '        .tab-inactive { color: #A0AEC0; }',
+                '        .weather-tag { display: inline-flex; align-items: center; font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; margin-right: 4px; border: 1px solid rgba(0,0,0,0.05); }',
+                '        .detail-content { transition: all 0.3s ease; }',
+                '        .rotate-180 { transform: rotate(180deg); }',
+                '        .custom-checkbox input:checked + div { background-color: #2B3A55; border-color: #2B3A55; }',
+                '        .custom-checkbox input:checked + div:after { content: "✓"; color: white; display: block; text-align: center; line-height: 20px; font-size: 14px; }',
+                '        @media (prefers-color-scheme: dark) {',
+                '             .custom-checkbox input:checked + div { background-color: #4A5568; border-color: #4A5568; }',
+                '        }',
+                '    </style>',
+                '</head>',
+                '<body class="bg-jp-bg text-gray-700 h-screen flex flex-col max-w-md mx-auto shadow-2xl relative overflow-hidden dark:bg-jp-dark dark:text-gray-200 transition-colors duration-300">',
+                '',
+                '    <div id="app-header" class="fixed top-0 w-full max-w-md z-50 bg-jp-bg dark:bg-jp-dark transition-colors duration-300 shadow-sm">',
+                '        <div class="seigaiha-pattern pt-8 pb-4 px-6 text-white">',
+                '            <div class="flex justify-between items-end">',
+                '                <div>',
+                '                    <p class="text-[10px] font-bold tracking-[0.2em] opacity-80 uppercase mb-1">行動說明會(測試中)</p>',
+                `                    <h1 class="text-xl font-bold leading-tight line-clamp-1">${data.tripName}</h1>`,
+                '                    <p class="text-xs opacity-90 mt-1 font-light flex items-center gap-2">',
+                `                        <span><i class="far fa-calendar-alt mr-1"></i> ${data.meeting.date} 出發</span>`,
+                `                        <span class="bg-white/20 px-2 py-0.5 rounded text-[10px]">${data.tripCode}</span>`,
+                '                    </p>',
+                '                </div>',
+                '                <div class="text-right">',
+                '                     <div id="location-label" class="text-[10px] opacity-70 mb-1"><i class="fas fa-map-marker-alt mr-1"></i>偵測中...</div>',
+                '                     <div id="header-weather" class="text-2xl font-light">--<span class="text-sm">°C</span></div>',
+                '                </div>',
+                '            </div>',
+                '        </div>',
+                '        <nav class="flex justify-around border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-jp-card-dark">',
+                '            <button onclick="switchTab(\'itinerary\')" id="btn-itinerary" class="flex-1 py-3 text-sm tab-active transition-all"><i class="fas fa-map-signs mr-1"></i> 行程</button>',
+                '            <button onclick="switchTab(\'info\')" id="btn-info" class="flex-1 py-3 text-sm tab-inactive transition-all"><i class="fas fa-info-circle mr-1"></i> 資訊</button>',
+                '            <button onclick="switchTab(\'tools\')" id="btn-tools" class="flex-1 py-3 text-sm tab-inactive transition-all"><i class="fas fa-suitcase mr-1"></i> 工具</button>',
+                '        </nav>',
+                '    </div>',
+                '',
+                '    <!-- Dynamic padding-top handled by JS -->',
+                '    <main class="flex-1 overflow-y-auto no-scrollbar pb-10 px-4" id="main-content">',
+                '        ',
+                '        <div id="view-itinerary" class="space-y-4 pb-10">',
+                '            ',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-4 shadow-sm border-l-4 border-jp-red relative overflow-hidden card-shadow">',
+                '                <div class="flex justify-between items-start mb-3">',
+                '                    <div class="flex-1">',
+                '                        <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2"><i class="far fa-clock text-jp-red"></i> 集合資訊</h3>',
+                '                        <div class="flex gap-4">',
+                '                            <div>',
+                '                                <p class="text-[10px] text-gray-400">集合時間</p>',
+                `                                <p class="text-xl font-bold text-jp-red">${data.meeting.time}</p>`,
+                '                            </div>',
+                '                        </div>',
+                '                        <div class="mt-2">',
+                '                            <p class="text-[10px] text-gray-400">集合地點</p>',
+                `                            <p class="text-sm text-gray-600 dark:text-gray-300 leading-tight font-medium whitespace-pre-wrap">${data.meeting.location}</p>`,
+                '                        </div>',
+                '                         <div class="mt-2">',
+                '                            <p class="text-[10px] text-gray-400">識別牌</p>',
+                `                            <span class="inline-block ${badgeColorClass} text-white text-xs px-2 py-0.5 rounded shadow-sm">${data.meeting.badge}</span>`,
+                '                        </div>',
+                '                    </div>',
+                '                    <div class="text-right pl-2 border-l border-dashed border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center min-w-[70px]">',
+                `                        <p class="text-[10px] text-gray-400 mb-1">導遊 ${data.guide.name}</p>`,
+                `                        <a href="tel:${data.guide.twPhone}" class="flex flex-col items-center justify-center w-12 h-12 bg-green-500 text-white rounded-full shadow-lg active:scale-95 transition-transform"><i class="fas fa-phone text-xl"></i></a>`,
+                `                        <p class="text-[10px] text-gray-500 mt-1">${data.guide.twPhone}</p>`,
+                '                    </div>',
+                '                </div>',
+                data.meeting.airportStaff ? `                <div class="pt-2 border-t border-dashed border-gray-200 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 flex justify-between"><span>機場專員</span><span>${data.meeting.airportStaff}</span></div>` : '',
+                '            </div>',
+                '',
+                data.days.map((day, idx) => `
+                <div class="bg-white dark:bg-jp-card-dark rounded-xl shadow-sm overflow-hidden p-5 transition-colors card-shadow">
+                    <div class="flex justify-between items-start mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <div>
+                            <h2 class="font-bold text-lg text-jp-indigo dark:text-blue-200">DAY ${day.day} <span class="text-xs font-normal text-gray-400 ml-2">${day.date}</span></h2>
+                            <div id="weather-stats-${idx}" class="mt-2 flex flex-wrap gap-y-2"><span class="text-xs text-gray-400">載入中...</span></div>
+                        </div>
+                        <div id="weather-icon-${idx}" class="text-2xl text-gray-300"></div>
+                    </div>
+
+                    <div class="space-y-4 relative pl-4 border-l-2 border-gray-100 dark:border-gray-600 pb-2 pt-2">
+                        <p class="text-[10px] text-gray-400 absolute -top-2 left-2 bg-white dark:bg-jp-card-dark px-1">${day.location || '行程'}</p>
+                        
+                        ${day.spots.map((spot, sIdx) => `
+                        <div class="relative cursor-pointer group" onclick="toggleDetail(this)">
+                            <div class="absolute -left-[21px] top-1 w-3 h-3 ${sIdx % 2 === 0 ? 'bg-green-500' : 'bg-blue-400'} rounded-full border-2 border-white dark:border-gray-600"></div>
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm leading-tight">${spot.name}</h3>
+                                <i class="fas fa-chevron-down text-xs text-gray-300 transition-transform duration-300 mt-1"></i>
+                            </div>
+                            <div class="detail-content hidden mt-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg leading-relaxed text-justify">
+                                ${spot.desc || '無詳細介紹'}
+                            </div>
+                        </div>
+                        `).join('')}
+
+                        <div class="relative cursor-pointer" onclick="${day.hotelAddress ? `showHotelCard('${day.hotel}', '${day.hotelTel}', '${day.hotelAddress}', 'Day ${day.day}')` : ''}">
+                            <div class="absolute -left-[21px] top-1 w-3 h-3 bg-purple-400 rounded-full border-2 border-white dark:border-gray-600"></div>
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm"><i class="fas fa-bed text-purple-400 mr-1"></i> ${day.hotel}</h3>
+                                ${day.hotelAddress ? '<i class="fas fa-search-plus text-gray-300 text-xs"></i>' : ''}
+                            </div>
+                            <p class="text-[10px] text-gray-400 pl-5 mt-1">${day.hotel.includes('溫暖的家') ? '' : `TEL: ${day.hotelTel || '詳洽領隊'}`}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                        <div class="flex"><span class="w-8 font-bold text-gray-400 text-xs pt-0.5">早餐</span> <span class="flex-1">${day.meals.b}</span></div>
+                        <div class="flex"><span class="w-8 font-bold text-gray-400 text-xs pt-0.5">午餐</span> <span class="flex-1">${day.meals.l}</span></div>
+                        <div class="flex"><span class="w-8 font-bold text-gray-400 text-xs pt-0.5">晚餐</span> <span class="flex-1">${day.meals.d}</span></div>
+                    </div>
+                </div>
+                `).join(''),
+                '',
+                '            <div class="text-center text-xs text-gray-400 py-4 pb-20">本網頁測試中，如有勘誤請依照紙本說明會資料為準<br>祝您旅途愉快 Have a Nice Trip</div>',
+                '        </div>',
+                '',
+                '        <div id="view-info" class="hidden space-y-4 pb-10">',
+                '            <!-- 服務費卡片 (新增) -->',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors border-l-4 border-yellow-500">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-2"><i class="fas fa-hand-holding-usd text-yellow-500 mr-2"></i>服務費說明</h3>',
+                '                <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">',
+                `                    本行程導遊司機的服務費每位旅客每天 <span class="font-bold text-jp-red">${data.info.tips.currency} ${data.info.tips.perDay} 元</span>，`,
+                `                    ${data.info.tips.days} 天共 <span class="font-bold text-jp-red">${data.info.tips.currency} ${totalTips} 元</span>，`,
+                '                    請一律在日本當地支付給導遊。',
+                '                </p>',
+                '            </div>',
+                '',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3 border-l-4 border-orange-400 pl-3">航班資訊</h3>',
+                data.flights.map(f => `
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-2">
+                    <div class="flex justify-between text-sm mb-1 text-gray-600 dark:text-gray-300">
+                        <span class="font-bold">${f.type} ${f.code}</span><span>${f.date}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-gray-800 dark:text-white">
+                        <div><div class="text-xl font-bold">${f.depTime}</div><div class="text-xs opacity-60">${f.depAirport}</div></div>
+                        <i class="fas fa-arrow-right opacity-40"></i>
+                        <div class="text-right"><div class="text-xl font-bold">${f.arrTime}</div><div class="text-xs opacity-60">${f.arrAirport}</div></div>
+                    </div>
+                </div>`).join(''),
+                '            </div>',
+                '',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3"><i class="fas fa-hotel text-indigo-400 mr-2"></i>住宿資訊</h3>',
+                '                <ul class="text-sm space-y-3 dark:text-gray-300">',
+                data.days.map(d => `
+                    <li class="flex justify-between border-b border-gray-50 dark:border-gray-700 pb-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 p-1 rounded" onclick="${d.hotelAddress ? `showHotelCard('${d.hotel}', '${d.hotelTel}', '${d.hotelAddress}', 'Day ${d.day}')` : ''}">
+                        <span class="text-jp-indigo dark:text-indigo-300 font-bold">Day ${d.day} ${d.hotelAddress ? '<i class="fas fa-search-plus text-xs ml-1 opacity-50"></i>' : ''}</span>
+                        <span class="font-medium text-right">${d.hotel}<br><span class="text-xs text-gray-400">${d.hotel.includes('溫暖的家') ? '' : d.hotelTel || '詳洽領隊'}</span></span>
+                    </li>`).join(''),
+                '                </ul>',
+                '                <p class="text-[10px] text-gray-400 mt-2 text-right">* 點擊飯店可顯示給司機看的卡片</p>',
+                '            </div>',
+                '',
+                '            <div class="space-y-3">',
+                '                <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl">',
+                '                    <i class="fas fa-sun text-orange-500 text-xl mb-2"></i>',
+                '                    <h4 class="font-bold text-sm text-gray-700 dark:text-gray-200">天氣穿著</h4>',
+                `                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">${data.info.weather}</p>`,
+                '                </div>',
+                '                <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">',
+                '                    <i class="fas fa-money-bill-wave text-green-500 text-xl mb-2"></i>',
+                '                    <h4 class="font-bold text-sm text-gray-700 dark:text-gray-200">貨幣匯率</h4>',
+                `                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">${data.info.currency}</p>`,
+                '                </div>',
+                '                <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">',
+                '                    <h4 class="font-bold text-sm text-gray-700 dark:text-gray-200 mb-1"><i class="fas fa-suitcase text-blue-500 mr-2"></i>行李與須知</h4>',
+                `                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">${data.info.baggage}</p>`,
+                '                </div>',
+                '            </div>',
+                '',
+                data.info.imageRoot ? `
+                <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors mt-4">
+                    <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3"><i class="fas fa-images text-pink-500 mr-2"></i>旅途相簿</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${[1,2,3,4,5,6,7,8].map(i => `<img src="${data.info.imageRoot}/img${i}.jpg" onerror="this.style.display='none'" class="w-full h-24 object-cover rounded-lg shadow-sm">`).join('')}
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-2 text-center">需確認圖片檔案路徑正確</p>
+                </div>` : '',
+                '',
+                data.info.pdfPath ? `
+                <a href="${data.info.pdfPath}" target="_blank" class="block w-full bg-gray-800 hover:bg-gray-700 text-white text-center py-3 rounded-xl font-bold mt-6 shadow-md transition">
+                    <i class="fas fa-file-pdf mr-2"></i> 下載紙本說明會資料
+                </a>` : '',
+                '            <div class="text-center text-xs text-gray-400 py-4 pb-20">本網頁測試中，如有勘誤請依照紙本說明會資料為準<br>祝您旅途愉快 Have a Nice Trip</div>',
+                '        </div>',
+                '',
+                '        <div id="view-tools" class="hidden space-y-6 pb-10">',
+                '            ',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3"><i class="fas fa-tasks text-teal-500 mr-2"></i>旅人檢查清單</h3>',
+                '                <div class="space-y-4">',
+                '                    <div>',
+                '                        <p class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 px-2 py-1 rounded inline-block">重要文件</p>',
+                '                        <div class="grid grid-cols-2 gap-2">',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_doc_passport" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">護照 (檢查效期)</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_doc_money" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">日幣</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_doc_vjw" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">信用卡</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_doc_ticket" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">個人旅遊保險</span>',
+                '                            </label>',
+                '                        </div>',
+                '                    </div>',
+                '                    <div>',
+                '                        <p class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-1 rounded inline-block">3C 產品</p>',
+                '                        <div class="grid grid-cols-2 gap-2">',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_3c_phone" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">網卡/漫遊</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_3c_charge" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">充電器/充電線</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_3c_bank" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">行動電源</span>',
+                '                            </label>',
+                '                        </div>',
+                '                        <div class="mt-2 text-[10px] text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400 p-2 rounded">',
+                '                            ⚡ 日本電壓為 100V，請確認您的電器(如吹風機)是否支援！',
+                '                        </div>',
+                '                    </div>',
+                '                    <div>',
+                '                        <p class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300 px-2 py-1 rounded inline-block">個人 / 盥洗 / 藥品</p>',
+                '                        <div class="grid grid-cols-2 gap-2">',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_item_rain" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">雨具/摺疊傘</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_item_coat" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">外套/保暖衣物</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_item_wash" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">牙刷/洗面乳</span>',
+                '                            </label>',
+                '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
+                '                                <input type="checkbox" id="check_item_meds" class="hidden" onchange="saveCheck(this.id)">',
+                '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">個人常備藥</span>',
+                '                            </label>',
+                '                        </div>',
+                '                    </div>',
+                '                </div>',
+                '                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">',
+                '                    <p class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider">每日退房檢查 (防止遺落)</p>',
+                '                    <div class="space-y-2">',
+                '                        <label class="flex items-center space-x-3 cursor-pointer custom-checkbox">',
+                '                            <input type="checkbox" id="daily_charger" class="hidden" onchange="saveCheck(this.id)">',
+                '                            <div class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                            <span class="text-sm text-gray-600 dark:text-gray-300">充電器 / 轉接頭 / 行動電源</span>',
+                '                        </label>',
+                '                        <label class="flex items-center space-x-3 cursor-pointer custom-checkbox">',
+                '                            <input type="checkbox" id="daily_wash" class="hidden" onchange="saveCheck(this.id)">',
+                '                            <div class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                            <span class="text-sm text-gray-600 dark:text-gray-300">盥洗包 / 眼鏡 / 隱眼</span>',
+                '                        </label>',
+                '                        <label class="flex items-center space-x-3 cursor-pointer custom-checkbox">',
+                '                            <input type="checkbox" id="daily_wifi" class="hidden" onchange="saveCheck(this.id)">',
+                '                            <div class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                            <span class="text-sm text-gray-600 dark:text-gray-300">護照 / 隨身貴重物品</span>',
+                '                        </label>',
+                '                        <label class="flex items-center space-x-3 cursor-pointer custom-checkbox">',
+                '                            <input type="checkbox" id="daily_key" class="hidden" onchange="saveCheck(this.id)">',
+                '                            <div class="w-5 h-5 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
+                '                            <span class="text-sm text-gray-600 dark:text-gray-300">房卡已歸還</span>',
+                '                        </label>',
+                '                    </div>',
+                '                    <button onclick="resetDailyChecks()" class="mt-3 text-xs text-blue-400 underline w-full text-right">重置每日檢查</button>',
+                '                </div>',
+                '            </div>',
+                '',
+                '            <!-- B. 手指日語 -->',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3">',
+                '                    <i class="fas fa-language text-green-500 mr-2"></i>手指日語',
+                '                </h3>',
+                '                ',
+                '                <p class="text-xs text-gray-400 mb-2 mt-1 font-bold">基礎會話</p>',
+                '                <div class="grid grid-cols-2 gap-3 mb-4">',
+                '                    <button onclick="speakJp(\'すみません\', \'蘇咪媽森\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">不好意思 / 請問</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Sumimasen</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'トイレはどこですか\', \'透以雷哇 多口爹思嘎\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">廁所在哪裡</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Toire wa?</div>',
+                '                    </button>',
+                '                </div>',
+                '',
+                '                <p class="text-xs text-gray-400 mb-2 font-bold">🛍️ 購物結帳</p>',
+                '                <div class="grid grid-cols-2 gap-3 mb-4">',
+                '                    <button onclick="speakJp(\'別々に包んでください\', \'貝茲貝茲 妮 此寸爹 哭搭賽\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">請幫我分開包裝</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200 text-sm">Betsu-betsu ni...</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'免税になりますか\', \'麵賊 妮 拿哩媽思嘎\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">可以免稅嗎?</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Tax Free?</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'袋は要りません\', \'福哭摟 哇 以哩媽森\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">不用袋子</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">No Bag</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'新しいのはありますか\', \'阿他拉系 諾哇 阿哩媽思嘎\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">有新的嗎?</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">New one?</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'これをください\', \'口雷喔 哭搭賽\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">我要這個</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Kore o kudasai</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'カードは使えますか\', \'卡多 哇 此凱媽思嘎\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">可以刷卡嗎?</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Card OK?</div>',
+                '                    </button>',
+                '                </div>',
+                '',
+                '                <p class="text-xs text-gray-400 mb-2 font-bold">🍽️ 餐廳用餐</p>',
+                '                <div class="grid grid-cols-2 gap-3">',
+                '                    <button onclick="speakJp(\'メニューをください\', \'妹紐 喔 哭搭賽\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">請給我菜單</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Menu Please</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'お水をください\', \'歐咪茲 喔 哭搭賽\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">請給我水</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Water Please</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'おすすめは？\', \'歐蘇蘇妹 哇\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">有推薦的嗎?</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Recommend?</div>',
+                '                    </button>',
+                '                    <button onclick="speakJp(\'お会計をお願いします\', \'歐凱K 喔餒該依希媽思\')" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-left active:bg-gray-200 dark:active:bg-gray-600 transition">',
+                '                        <div class="text-xs text-gray-400">麻煩結帳</div>',
+                '                        <div class="font-bold text-jp-indigo dark:text-blue-200">Check Bill</div>',
+                '                    </button>',
+                '                </div>',
+                '',
+                '                <div id="speak-status" class="text-center text-xs text-gray-400 mt-2 h-4"></div>',
+                '            </div>',
+                '',
+                '            <!-- D. 緊急聯絡 -->',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-4"><i class="fas fa-exclamation-circle text-jp-red mr-2"></i>緊急聯絡 & 支援</h3>',
+                '                ',
+                '                <div class="grid grid-cols-2 gap-3 mb-3">',
+                '                    <a href="tel:110" class="border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-center active:bg-gray-50 dark:active:bg-gray-700">',
+                '                        <div class="text-xs text-gray-400 mb-1">警察 (POLICE)</div>',
+                '                        <div class="text-3xl font-bold text-jp-red">110</div>',
+                '                    </a>',
+                '                    <a href="tel:119" class="border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-center active:bg-gray-50 dark:active:bg-gray-700">',
+                '                        <div class="text-xs text-gray-400 mb-1">救護/火警</div>',
+                '                        <div class="text-3xl font-bold text-jp-red">119</div>',
+                '                    </a>',
+                '                </div>',
+                '',
+                '                <a href="tel:05038162787" class="block border border-gray-200 dark:border-gray-600 rounded-xl p-4 mb-4 active:bg-gray-50 dark:active:bg-gray-700">',
+                '                    <div class="flex justify-between items-center">',
+                '                        <div>',
+                '                            <div class="font-bold text-gray-800 dark:text-gray-200">訪日外國人<br>醫療 & 急難熱線</div>',
+                '                            <div class="text-[10px] text-gray-400 uppercase">Japan Visitor Hotline (JNTO)</div>',
+                '                            <div class="text-2xl font-bold text-gray-700 dark:text-gray-300 mt-1">050-3816-2787</div>',
+                '                        </div>',
+                '                        <div class="w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center">',
+                '                            <i class="fas fa-phone"></i>',
+                '                        </div>',
+                '                    </div>',
+                '                    <div class="text-[10px] text-gray-400 mt-2">* 24小時對應 (英/中/韓)</div>',
+                '                </a>',
+                '',
+                '                <div class="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">',
+                '                    <p class="text-xs text-gray-400 font-bold">團體專屬聯絡人</p>',
+                `                    <a href="tel:${data.guide.twPhone}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                        <div><p class="font-bold text-sm dark:text-gray-200">導遊 ${data.guide.name}</p><p class="text-xs text-gray-400">${data.guide.twPhone}</p></div>
+                                        <div class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i class="fas fa-phone"></i></div>
+                                    </a>`,
+                `                    <a href="tel:${data.meeting.airportStaff ? data.meeting.airportStaff.split(' ').pop() : ''}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                        <div><p class="font-bold text-sm dark:text-gray-200">機場專員</p><p class="text-xs text-gray-400">${data.meeting.airportStaff || '無資訊'}</p></div>
+                                        <div class="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i class="fas fa-phone"></i></div>
+                                    </a>`,
+                '                    <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900">',
+                '                        <p class="text-xs text-jp-red dark:text-red-400 font-bold mb-1">外交部 東京駐日代表處</p>',
+                '                        <a href="tel:+81332807917" class="block text-sm text-gray-700 dark:text-gray-300 mb-1">03-3280-7917 (上班時間)</a>',
+                '                        <a href="tel:+818010097179" class="block text-sm font-bold text-red-600">080-1009-7179 (急難救助)</a>',
+                '                    </div>',
+                '                </div>',
+                '            </div>',
+                '',
+                '            <!-- F. 匯率換算 -->',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3"><i class="fas fa-coins text-yellow-500 mr-2"></i>即時匯率換算</h3>',
+                '                <div class="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">',
+                '                    <div class="flex-1"><label class="text-xs text-gray-400 block mb-1">日幣 (JPY)</label><input type="number" id="calc-jpy" placeholder="輸入" class="w-full bg-transparent text-xl font-bold text-gray-700 dark:text-white outline-none" oninput="convertCurrency()"></div>',
+                '                    <i class="fas fa-arrow-right text-gray-300"></i>',
+                '                    <div class="flex-1 text-right"><label class="text-xs text-gray-400 block mb-1">台幣 (TWD)</label><div id="calc-twd" class="text-xl font-bold text-blue-500">0</div></div>',
+                '                </div>',
+                '                <p class="text-[10px] text-gray-400 mt-2 text-right">匯率參考: 1 JPY ≈ <span id="calc-rate-display">...</span> TWD</p>',
+                '            </div>',
+                '',
+                '            <!-- G. 免稅湊單 -->',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <div class="flex justify-between items-center mb-3">',
+                '                    <h3 class="font-bold text-gray-800 dark:text-gray-100"><i class="fas fa-calculator text-pink-500 mr-2"></i>免稅湊單計算機</h3>',
+                '                    <button onclick="resetBatch()" class="text-xs text-red-400 underline">重置</button>',
+                '                </div>',
+                '                <div class="bg-pink-50 dark:bg-pink-900/10 p-4 rounded-xl border border-pink-100 dark:border-pink-900/30">',
+                '                    <div class="mb-3">',
+                '                         <input type="text" id="batch-store-name" placeholder="商店名稱 (例: 松本清)" class="w-full bg-white dark:bg-gray-700 dark:text-white border border-pink-200 dark:border-gray-600 rounded-lg text-sm px-3 py-2 outline-none mb-2 transition-opacity">',
+                '                         <div class="flex gap-1">',
+                '                             <input type="text" id="batch-item-name" placeholder="品項" class="flex-[2] min-w-0 bg-white dark:bg-gray-700 dark:text-white border border-pink-200 dark:border-gray-600 rounded-lg text-sm px-2 py-2 outline-none">',
+                '                             <input type="number" id="batch-item-qty" placeholder="x1" class="w-12 bg-white dark:bg-gray-700 dark:text-white border border-pink-200 dark:border-gray-600 rounded-lg text-sm px-1 py-2 outline-none text-center">',
+                '                             <input type="number" id="batch-item-price" placeholder="¥單價" class="w-20 bg-white dark:bg-gray-700 dark:text-white border border-pink-200 dark:border-gray-600 rounded-lg text-sm px-2 py-2 outline-none">',
+                '                             <button onclick="addBatchItem()" class="bg-pink-500 text-white rounded-lg px-3 py-2"><i class="fas fa-plus"></i></button>',
+                '                         </div>',
+                '                    </div>',
+                '                    ',
+                '                    <ul id="batch-list" class="space-y-1 text-xs text-gray-600 dark:text-gray-400 mb-3 max-h-24 overflow-y-auto"></ul>',
+                '',
+                '                    <div class="border-t border-pink-200 dark:border-pink-900/30 pt-2">',
+                '                        <div class="flex justify-between text-xs mb-1">',
+                '                            <span class="text-gray-500 dark:text-gray-400">目前總計</span>',
+                '                            <span id="batch-total-display" class="font-bold text-gray-800 dark:text-white">¥0</span>',
+                '                        </div>',
+                '                        <div class="flex justify-between text-xs mb-2">',
+                '                             <span id="batch-status-text" class="text-jp-red font-bold">還差 ¥5,500</span>',
+                '                        </div>',
+                '                        <div class="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-600 mb-3">',
+                '                            <div id="batch-progress" class="bg-jp-red h-3 rounded-full transition-all duration-500" style="width: 0%"></div>',
+                '                        </div>',
+                '                        <button onclick="saveBatchToMain()" class="w-full bg-jp-indigo hover:bg-blue-800 text-white text-xs py-2 rounded-lg transition shadow-sm">',
+                '                            <i class="fas fa-save mr-1"></i> 結算並儲存至購物紀錄',
+                '                        </button>',
+                '                    </div>',
+                '                </div>',
+                '            </div>',
+                '',
+                '            <!-- H. 購物記帳 -->',
+                '            <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors">',
+                '                <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-gray-800 dark:text-gray-100"><i class="fas fa-shopping-bag text-yellow-400 mr-2"></i>購物記帳 (總表)</h3><button onclick="resetBudget()" class="text-xs text-red-400 underline">重置</button></div>',
+                '                ',
+                '                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl mb-4 text-center">',
+                '                    <p class="text-xs text-gray-400">總花費 (JPY)</p><p class="text-3xl font-bold text-gray-800 dark:text-white" id="total-amount">¥0</p>',
+                '                    <p class="text-xs text-gray-400 mt-1">約台幣 NT$ <span id="twd-amount">0</span></p>',
+                '                </div>',
+                '',
+                '                <div class="flex gap-1 mb-4">',
+                '                    <input type="text" id="item-name" placeholder="單筆品項" class="flex-[2] min-w-0 bg-gray-100 dark:bg-gray-700 dark:text-white border-none rounded-lg text-sm px-2 py-2 outline-none">',
+                '                    <input type="number" id="item-qty" placeholder="x1" class="w-12 bg-gray-100 dark:bg-gray-700 dark:text-white border-none rounded-lg text-sm px-1 py-2 outline-none text-center">',
+                '                    <input type="number" id="item-price" placeholder="¥單價" class="w-20 bg-gray-100 dark:bg-gray-700 dark:text-white border-none rounded-lg text-sm px-2 py-2 outline-none">',
+                '                    <button onclick="addItem()" class="bg-blue-500 text-white rounded-lg px-3 py-2"><i class="fas fa-plus"></i></button>',
+                '                </div>',
+                '                <ul id="budget-list" class="space-y-2 text-sm max-h-40 overflow-y-auto dark:text-gray-300"></ul>',
+                '            </div>',
+                '            <div class="text-center text-xs text-gray-400 py-4 pb-20">本網頁測試中，如有勘誤請依照紙本說明會資料為準<br>祝您旅途愉快 Have a Nice Trip</div>',
+                '        </div>',
+                '',
+                '    </main>',
+                '',
+                '    <!-- Modal for Hotel Card -->',
+                '    <div id="hotel-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onclick="closeHotelCard()">',
+                '        <div class="bg-white w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl relative" onclick="event.stopPropagation()">',
+                '            <button onclick="closeHotelCard()" class="absolute top-4 right-4 text-gray-400 text-2xl">&times;</button>',
+                '            <p class="text-xs text-gray-400 mb-2 uppercase tracking-widest">Driver Card</p>',
+                '            <div class="border-2 border-jp-indigo p-4 rounded-xl">',
+                '                <p class="text-sm text-gray-500 mb-1">此方までお願いします</p>',
+                '                <h2 class="text-xl font-black text-jp-indigo mb-4 leading-relaxed" id="modal-hotel-name"></h2>',
+                '                <hr class="border-dashed border-gray-300 my-3">',
+                '                <p class="text-left text-sm font-bold text-gray-700"><span id="modal-hotel-addr"></span></p>',
+                '                <p class="text-left text-xs text-gray-400 mt-1">TEL: <span id="modal-hotel-tel"></span></p>',
+                '            </div>',
+                '            <p class="text-xs text-gray-400 mt-4">(點擊背景關閉)</p>',
+                '        </div>',
+                '    </div>',
+                '',
+                '    <script>',
+                `        // Data Injection`,
+                `        const TRIP_DATA = ${jsonStr};`,
+                '',
+                '        // --- UI Switching ---',
+                '        function switchTab(tabName) {',
+                '            [\'itinerary\', \'info\', \'tools\'].forEach(t => {',
+                '                document.getElementById(\'view-\'+t).classList.add(\'hidden\');',
+                '                document.getElementById(\'btn-\'+t).className = \'flex-1 py-3 text-sm tab-inactive transition-all\';',
+                '            });',
+                '            document.getElementById(\'view-\'+tabName).classList.remove(\'hidden\');',
+                '            document.getElementById(\'btn-\'+tabName).className = \'flex-1 py-3 text-sm tab-active transition-all\';',
+                '            document.getElementById(\'main-content\').scrollTop = 0;',
+                '        }',
+                '',
+                '        // Toggle Spot Detail',
+                '        function toggleDetail(el) {',
+                '            const content = el.querySelector(\'.detail-content\');',
+                '            const icon = el.querySelector(\'.fa-chevron-down\');',
+                '            if (content) {',
+                '                if (content.classList.contains(\'hidden\')) {',
+                '                    content.classList.remove(\'hidden\');',
+                '                    if(icon) icon.classList.add(\'rotate-180\');',
+                '                } else {',
+                '                    content.classList.add(\'hidden\');',
+                '                    if(icon) icon.classList.remove(\'rotate-180\');',
+                '                }',
+                '            }',
+                '        }',
+                '',
+                '        // --- Hotel Modal ---',
+                '        function showHotelCard(name, tel, addr, dayLabel) {',
+                '             if(!addr) return; // double check logic',
+                '             document.getElementById(\'modal-hotel-name\').innerHTML = name.replace(/飯店/g, \'\') + \'<br><span class="text-sm font-normal text-gray-500">(\' + dayLabel + \')</span>\';',
+                '             document.getElementById(\'modal-hotel-tel\').innerText = tel;',
+                '             document.getElementById(\'modal-hotel-addr\').innerText = addr;',
+                '             document.getElementById(\'hotel-modal\').classList.remove(\'hidden\');',
+                '        }',
+                '        function closeHotelCard() { document.getElementById(\'hotel-modal\').classList.add(\'hidden\'); }',
+                '',
+                '        // --- Weather Logic ---',
+                '        // Global resize observer variable',
+                '        let headerResizeObserver = null;',
+                '',
+                '        async function fetchWeather() {',
+                '            try {',
+                '                // Initialize dynamic padding logic when weather starts fetching',
+                '                initDynamicPadding();',
+                '',
+                '                // Geolocation logic is independent',
+                '                if (navigator.geolocation) {',
+                '                    navigator.geolocation.getCurrentPosition(',
+                '                        async (p) => {',
+                '                             try {',
+                '                                 const res = await fetch(\`https://api.open-meteo.com/v1/forecast?latitude=\${p.coords.latitude}&longitude=\${p.coords.longitude}&current=temperature_2m&timezone=Asia%2FTokyo\`);',
+                '                                 const d = await res.json();',
+                '                                 if(d.current) document.getElementById(\'header-weather\').innerHTML = \`\${Math.round(d.current.temperature_2m)}<span class="text-sm">°C</span>\`;',
+                '                                 document.getElementById(\'location-label\').innerHTML = \'<i class="fas fa-map-marker-alt mr-1"></i>所在地即時\';',
+                '                             } catch(e){}',
+                '                        }',
+                '                    );',
+                '                }',
+                '',
+                '                // Date Check for Forecast',
+                '                const now = new Date();',
+                '                // Reset time to start of day for comparison',
+                '                now.setHours(0,0,0,0);',
+                '                ',
+                '                const tripDate = new Date(TRIP_DATA.meeting.date);',
+                '                tripDate.setHours(0,0,0,0);',
+                '                // Show from 1 day before trip',
+                '                tripDate.setDate(tripDate.getDate() - 1);',
+                '                ',
+                '                // If today is earlier than (tripDate - 1 day), do not show forecast',
+                '                if (now < tripDate) {',
+                '                     TRIP_DATA.days.forEach((_, idx) => {',
+                '                         const el = document.getElementById(\'weather-stats-\'+idx);',
+                '                         if(el) el.innerHTML = \'<span class="text-xs text-gray-400">天氣預報將於出發前1天顯示</span>\';',
+                '                     });',
+                '                     return;',
+                '                }',
+                '            } catch(e){}',
+                '',
+                '            TRIP_DATA.days.forEach(async (day, idx) => {',
+                '                if(!day.lat) return;',
+                '                try {',
+                '                    // Basic Weather + UV',
+                '                    const res = await fetch(\`https://api.open-meteo.com/v1/forecast?latitude=\${day.lat}&longitude=\${day.lon}&daily=precipitation_probability_max,temperature_2m_max,temperature_2m_min,uv_index_max&timezone=Asia%2FTokyo&forecast_days=1\`);',
+                '                    const d = await res.json();',
+                '                    ',
+                '                    // AQI',
+                '                    const aqiRes = await fetch(\`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\${day.lat}&longitude=\${day.lon}&daily=us_aqi_max&timezone=Asia%2FTokyo&forecast_days=1\`);',
+                '                    const aqiData = await aqiRes.json();',
+                '',
+                '                    if(d.daily) {',
+                '                        const rain = d.daily.precipitation_probability_max[0];',
+                '                        const max = Math.round(d.daily.temperature_2m_max[0]);',
+                '                        const min = Math.round(d.daily.temperature_2m_min[0]);',
+                '                        const uv = d.daily.uv_index_max[0];',
+                '                        const aqi = aqiData.daily ? aqiData.daily.us_aqi_max[0] : \'-\';',
+                '',
+                '                        let aqiColor = "text-green-500";',
+                '                        if(aqi > 50) aqiColor = "text-yellow-500";',
+                '                        if(aqi > 100) aqiColor = "text-orange-500";',
+                '                        if(aqi > 150) aqiColor = "text-red-500";',
+                '',
+                '                        const html = \`',
+                '                            <div class="flex gap-3 text-xs w-full">',
+                '                                <div class="flex items-center gap-1"><span class="text-red-400 font-bold">最高</span> \${max}°</div>',
+                '                                <div class="flex items-center gap-1"><span class="text-blue-400 font-bold">最低</span> \${min}°</div>',
+                '                                <div class="flex items-center gap-1"><i class="fas fa-umbrella text-blue-300"></i> \${rain}%</div>',
+                '                            </div>',
+                '                            <div class="flex gap-3 text-[10px] w-full mt-1 opacity-80">',
+                '                                <div><i class="fas fa-sun text-orange-400"></i> UV: \${uv}</div>',
+                '                                <div class="\${aqiColor} font-bold"><i class="fas fa-wind"></i> AQI: \${aqi}</div>',
+                '                            </div>\`;',
+                '                        ',
+                '                        document.getElementById(\'weather-stats-\'+idx).innerHTML = html;',
+                '                        document.getElementById(\'weather-icon-\'+idx).innerHTML = \'<i class="fas fa-cloud-sun text-orange-300"></i>\';',
+                '                    }',
+                '                } catch(e){}',
+                '            });',
+                '        }',
+                '',
+                '        // --- Dynamic Padding Logic ---',
+                '        function initDynamicPadding() {',
+                '            const header = document.getElementById(\'app-header\');',
+                '            const main = document.getElementById(\'main-content\');',
+                '            if (!header || !main) return;',
+                '',
+                '            const updatePadding = () => {',
+                '                const height = header.offsetHeight;',
+                '                main.style.paddingTop = (height + 15) + \'px\'; // Add a little buffer',
+                '            };',
+                '',
+                '            // Initial update',
+                '            updatePadding();',
+                '',
+                '            // Clean up previous observer if exists',
+                '            if (headerResizeObserver) {',
+                '                headerResizeObserver.disconnect();',
+                '            }',
+                '',
+                '            // Create new observer',
+                '            headerResizeObserver = new ResizeObserver(updatePadding);',
+                '            headerResizeObserver.observe(header);',
+                '            ',
+                '            // Also update on window resize',
+                '            window.addEventListener(\'resize\', updatePadding);',
+                '        }',
+                '',
+                '        // --- Checklist Logic ---',
+                '        function initChecklist() {',
+                '            document.querySelectorAll(\'input[type="checkbox"]\').forEach(el => {',
+                '                if(localStorage.getItem(el.id) === \'true\') el.checked = true;',
+                '            });',
+                '        }',
+                '        function saveCheck(id) {',
+                '            localStorage.setItem(id, document.getElementById(id).checked);',
+                '        }',
+                '        function resetDailyChecks() {',
+                '            document.querySelectorAll(\'input[type="checkbox"][id^="daily_"]\').forEach(chk => {',
+                '                chk.checked = false;',
+                '                localStorage.setItem(chk.id, \'false\');',
+                '            });',
+                '            alert(\'每日檢查清單已重置！\');',
+                '        }',
+                '',
+                '        // --- Currency Logic ---',
+                '        let currentRate = 0.22;',
+                '        async function fetchRate() {',
+                '            try {',
+                '                const res = await fetch(\'https://api.exchangerate-api.com/v4/latest/JPY\');',
+                '                const data = await res.json();',
+                '                if(data.rates.TWD) {',
+                '                    currentRate = data.rates.TWD;',
+                '                    document.getElementById(\'calc-rate-display\').innerText = currentRate.toFixed(3);',
+                '                    renderBudget();',
+                '                    convertCurrency();',
+                '                }',
+                '            } catch(e){}',
+                '        }',
+                '        function convertCurrency() {',
+                '            const jpy = parseFloat(document.getElementById(\'calc-jpy\').value);',
+                '            if(!isNaN(jpy)) {',
+                '                document.getElementById(\'calc-twd\').innerText = Math.round(jpy * currentRate).toLocaleString();',
+                '            } else {',
+                '                document.getElementById(\'calc-twd\').innerText = \'0\';',
+                '            }',
+                '        }',
+                '',
+                '        // --- Budget & Batch Logic ---',
+                '        let items = [];',
+                '        let batchItems = [];',
+                '        try { const saved = localStorage.getItem(\'trip_budget\'); if (saved) items = JSON.parse(saved); } catch (e) {}',
+                '',
+                '        function getIntVal(id, def = 1) {',
+                '            const val = document.getElementById(id).value;',
+                '            return val ? parseInt(val) : def;',
+                '        }',
+                '',
+                '        function addBatchItem() {',
+                '            const name = document.getElementById(\'batch-item-name\').value;',
+                '            const price = parseInt(document.getElementById(\'batch-item-price\').value);',
+                '            const qty = getIntVal(\'batch-item-qty\', 1);',
+                '            ',
+                '            if (name && price) {',
+                '                batchItems.push({ name, price, qty });',
+                '                document.getElementById(\'batch-item-name\').value = \'\';',
+                '                document.getElementById(\'batch-item-price\').value = \'\';',
+                '                document.getElementById(\'batch-item-qty\').value = \'\';',
+                '                ',
+                '                // Lock store name',
+                '                const storeInput = document.getElementById(\'batch-store-name\');',
+                '                storeInput.disabled = true;',
+                '                storeInput.classList.add(\'opacity-50\', \'cursor-not-allowed\');',
+                '                renderBatch();',
+                '            }',
+                '        }',
+                '',
+                '        function renderBatch() {',
+                '            const list = document.getElementById(\'batch-list\');',
+                '            const totalEl = document.getElementById(\'batch-total-display\');',
+                '            const statusEl = document.getElementById(\'batch-status-text\');',
+                '            const progressEl = document.getElementById(\'batch-progress\');',
+                '            ',
+                '            list.innerHTML = \'\';',
+                '            let batchTotal = 0;',
+                '            batchItems.forEach(item => {',
+                '                const rowTotal = item.price * item.qty;',
+                '                batchTotal += rowTotal;',
+                '                list.innerHTML += \`<li class="flex justify-between"><span>\${item.name} <span class="text-xs text-gray-400">x\${item.qty}</span></span><span>¥\${rowTotal}</span></li>\`;',
+                '            });',
+                '            ',
+                '            totalEl.innerText = \'¥\' + batchTotal.toLocaleString();',
+                '            const limit = 5500;',
+                '            const progress = Math.min((batchTotal / limit) * 100, 100);',
+                '            const remaining = limit - batchTotal;',
+                '            progressEl.style.width = \`\${progress}%\`;',
+                '            ',
+                '            if (batchTotal >= limit) {',
+                '                statusEl.innerHTML = \'<i class="fas fa-check-circle"></i> 已達標！可退稅\';',
+                '                statusEl.className = "text-green-500 font-bold text-xs mb-2";',
+                '                progressEl.classList.remove(\'bg-jp-red\');',
+                '                progressEl.classList.add(\'bg-green-500\');',
+                '            } else {',
+                '                statusEl.innerHTML = \`還差 ¥\${remaining.toLocaleString()}\`;',
+                '                statusEl.className = "text-jp-red font-bold text-xs mb-2";',
+                '                progressEl.classList.remove(\'bg-green-500\');',
+                '                progressEl.classList.add(\'bg-jp-red\');',
+                '            }',
+                '        }',
+                '',
+                '        function saveBatchToMain() {',
+                '            if(batchItems.length === 0) return;',
+                '            const storeName = document.getElementById(\'batch-store-name\').value || \'未分類商店\';',
+                '            if(confirm(\`將這 \${batchItems.length} 筆資料存入購物紀錄？\`)) {',
+                '                batchItems.forEach(item => {',
+                '                    items.push({',
+                '                        name: \`[\${storeName}] \${item.name}\`,',
+                '                        price: item.price,',
+                '                        qty: item.qty',
+                '                    });',
+                '                });',
+                '                resetBatchInternal();',
+                '                renderBudget();',
+                '                alert(\'已存入！\');',
+                '            }',
+                '        }',
+                '        ',
+                '        function resetBatch() {',
+                '            if(batchItems.length > 0 && confirm(\'清空湊單計算？\')) resetBatchInternal();',
+                '        }',
+                '        function resetBatchInternal() {',
+                '            batchItems = [];',
+                '            const storeInput = document.getElementById(\'batch-store-name\');',
+                '            storeInput.value = \'\';',
+                '            storeInput.disabled = false;',
+                '            storeInput.classList.remove(\'opacity-50\', \'cursor-not-allowed\');',
+                '            renderBatch();',
+                '        }',
+                '',
+                '        // --- Main Budget Logic ---',
+                '        function renderBudget() {',
+                '            const list = document.getElementById(\'budget-list\');',
+                '            if(!list) return;',
+                '            list.innerHTML = \'\'; let total = 0;',
+                '            items.forEach((item, index) => {',
+                '                const qty = item.qty || 1;',
+                '                const rowTotal = item.price * qty;',
+                '                total += rowTotal;',
+                '                list.innerHTML += \`<li class="flex justify-between items-center border-b border-gray-50 dark:border-gray-700 pb-1">',
+                '                    <span class="text-gray-600 dark:text-gray-300">\${item.name} <span class="text-xs text-gray-400">x\${qty}</span></span>',
+                '                    <div class="flex items-center gap-2">',
+                '                        <span class="font-medium text-gray-800 dark:text-gray-200">¥\${rowTotal}</span>',
+                '                        <button onclick="deleteItem(\${index})" class="text-gray-300 hover:text-red-400"><i class="fas fa-times"></i></button>',
+                '                    </div>',
+                '                </li>\`;',
+                '            });',
+                '            document.getElementById(\'total-amount\').innerText = \'¥\' + total.toLocaleString();',
+                '            document.getElementById(\'twd-amount\').innerText = Math.round(total * currentRate).toLocaleString();',
+                '            try { localStorage.setItem(\'trip_budget\', JSON.stringify(items)); } catch(e) {}',
+                '        }',
+                '        function addItem() {',
+                '            const name = document.getElementById(\'item-name\').value;',
+                '            const price = parseInt(document.getElementById(\'item-price\').value);',
+                '            const qty = getIntVal(\'item-qty\', 1);',
+                '            if (name && price) { ',
+                '                items.push({ name, price, qty }); ',
+                '                document.getElementById(\'item-name\').value = \'\'; ',
+                '                document.getElementById(\'item-price\').value = \'\'; ',
+                '                document.getElementById(\'item-qty\').value = \'\'; ',
+                '                renderBudget(); ',
+                '            }',
+                '        }',
+                '        function deleteItem(idx) { items.splice(idx, 1); renderBudget(); }',
+                '        function resetBudget() { if(confirm(\'清空記帳？\')) { items = []; renderBudget(); } }',
+                '',
+                '        // --- Speech ---',
+                '        function speakJp(text, romaji) {',
+                '            if (\'speechSynthesis\' in window) {',
+                '                const u = new SpeechSynthesisUtterance(text);',
+                '                u.lang = \'ja-JP\';',
+                '                u.rate = 0.9;',
+                '                document.getElementById(\'speak-status\').innerText = \`🔊 播放中: \${romaji}\`;',
+                '                u.onend = function() { document.getElementById(\'speak-status\').innerText = \'\'; };',
+                '                window.speechSynthesis.speak(u);',
+                '            }',
+                '        }',
+                '',
+                '        // Init',
+                '        fetchWeather();',
+                '        fetchRate();',
+                '        initChecklist();',
+                '        renderBudget();',
+                '',
+                '    <\/script>',
+                '</body>',
+                '</html>'
+            ];
+
+            return htmlParts.join('\n');
+        }
+
+        const GeneratorApp = () => {
+            const [data, setData] = useState(DEFAULT_DATA);
+            const [status, setStatus] = useState("");
+
+            const updateData = (field, value) => setData(prev => ({ ...prev, [field]: value }));
+            const updateInfo = (field, value) => setData(prev => ({ ...prev, info: { ...prev.info, [field]: value } }));
+            
+            // Flight Updater
+            const updateFlight = (idx, field, value) => {
+                const newF = [...data.flights];
+                newF[idx][field] = value;
+                setData(prev => ({ ...prev, flights: newF }));
+            };
+
+            const updateDay = (idx, field, value) => {
+                const newDays = [...data.days];
+                if(field === 'meals') {
+                    newDays[idx].meals = { ...newDays[idx].meals, ...value };
+                } else {
+                    newDays[idx][field] = value;
+                }
+                
+                if(field === 'location' && CITIES[value]) {
+                    newDays[idx].lat = CITIES[value].lat;
+                    newDays[idx].lon = CITIES[value].lon;
+                }
+                setData({ ...data, days: newDays });
+            };
+
+            const updateDaySpot = (dayIdx, spotIdx, field, value) => {
+                const newDays = [...data.days];
+                newDays[dayIdx].spots[spotIdx][field] = value;
+                setData({ ...data, days: newDays });
+            };
+
+            const addSpot = (dayIdx) => {
+                const newDays = [...data.days];
+                newDays[dayIdx].spots.push({ name: "新景點", desc: "請輸入介紹" });
+                setData({ ...data, days: newDays });
+            };
+
+            const removeSpot = (dayIdx, spotIdx) => {
+                const newDays = [...data.days];
+                newDays[dayIdx].spots.splice(spotIdx, 1);
+                setData({ ...data, days: newDays });
+            };
+            
+            const addDay = () => {
+                const newDays = [...data.days];
+                const nextDayNum = newDays.length + 1;
+                newDays.push({
+                    day: nextDayNum,
+                    date: "",
+                    location: "東京",
+                    lat: 35.68, lon: 139.76,
+                    spots: [],
+                    meals: { b: "", l: "", d: "" },
+                    hotel: "",
+                    hotelTel: "",
+                    hotelAddress: ""
+                });
+                setData({ ...data, days: newDays });
+            };
+
+            const removeDay = (idx) => {
+                if (data.days.length <= 1) return;
+                if (confirm(`確定刪除 Day ${data.days[idx].day}?`)) {
+                    const newDays = data.days.filter((_, i) => i !== idx).map((d, i) => ({ ...d, day: i + 1 }));
+                    setData({ ...data, days: newDays });
+                }
+            };
+
+            // 1. 簡表 PDF 解析
+            const handleSummaryPdf = async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                setStatus("解析總表 PDF...");
+                
+                const ab = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(ab).promise;
+                let fullText = "";
+                
+                // Extract text from all pages
+                for(let i=1; i<=pdf.numPages; i++) {
+                    const p = await pdf.getPage(i);
+                    const t = await p.getTextContent();
+                    fullText += t.items.map(s => s.str).join(" ") + "\n"; 
+                }
+
+                const newData = {...data};
+
+                // 1. Basic Info
+                const codeMatch = fullText.match(/團體編號[:：\s]*([A-Z0-9]+)/);
+                if(codeMatch) newData.tripCode = codeMatch[1].trim();
+
+                const nameMatch = fullText.match(/團體名稱[:：\s]*([^\n]+)/); 
+                if(nameMatch) newData.tripName = nameMatch[1].trim();
+
+                const guideMatch = fullText.match(/領隊姓名[:：\s]*([^\s\n\*]+)/);
+                if(guideMatch) newData.guide.name = guideMatch[1].replace(/[\u3000\s「]/g, '').trim();
+
+                const phoneMatch = fullText.match(/台灣手機[:：\s]*([\d-]+)/);
+                if(phoneMatch) newData.guide.twPhone = phoneMatch[1].trim();
+                
+                // 出發日期辨識修正：優先抓取「出發日期」後面的日期
+                const departDateRegex = /出發日期[:：\s]*(\d{4}\/\d{2}\/\d{2})/;
+                const departDateMatch = fullText.match(departDateRegex);
+                if(departDateMatch) newData.dateRange = departDateMatch[1].trim();
+
+                // Meeting
+                const meetDateMatch = fullText.match(/集合時間[:：\s]*(\d{4}\/\d{2}\/\d{2})/);
+                const meetTimeMatch = fullText.match(/集合時間[:：\s]*\d{4}\/\d{2}\/\d{2}\s*(\d{2}:\d{2})/);
+                if(meetDateMatch) newData.meeting.date = meetDateMatch[1];
+                if(meetTimeMatch) newData.meeting.time = meetTimeMatch[1];
+                
+                // 集合地點修正
+                const locRegex = /集合地點[:：\s]*([\s\S]*?)(?=\n|識別牌|機場專員|班機時刻|$)/;
+                const locMatch = fullText.match(locRegex);
+                if(locMatch) newData.meeting.location = locMatch[1].trim();
+
+                // 識別牌修正 (抓取括號內的顏色或整段)
+                const badgeRegex = /識別牌[:：\s]*([^\*]+)/;
+                const badgeMatch = fullText.match(badgeRegex);
+                if(badgeMatch) newData.meeting.badge = badgeMatch[1].trim();
+                
+                // 機場專員電話辨識修正：抓取包含電話的整行資訊
+                const staffRegex = /機場專員[:：\s]*([^\n]+?[\d-]+)/;
+                const staffMatch = fullText.match(staffRegex);
+                if(staffMatch) newData.meeting.airportStaff = staffMatch[1].trim();
+
+                // 2. Flights - 修正班機資訊解析
+                const flightRegex = /"(\d{4}\/\d{2}\/\d{2})"\s*,\s*"([A-Z0-9]+)"\s*,\s*"([A-Z]{3})"\s*,\s*"([A-Z]{3})"\s*,\s*"(\d{2}:\d{2})"\s*,\s*"(\d{2}:\d{2})"/g;
+                const flightsFound = [...fullText.matchAll(flightRegex)];
+
+                // 如果用上面的正規表示式找不到，嘗試另一種格式 (無引號)
+                if (flightsFound.length === 0) {
+                     const flightRegexAlt = /(\d{4}\/\d{2}\/\d{2})\s+([A-Z0-9]+)\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/g;
+                     const flightsFoundAlt = [...fullText.matchAll(flightRegexAlt)];
+                     if(flightsFoundAlt.length > 0) {
+                        flightsFound.push(...flightsFoundAlt);
+                     }
+                }
+
+                if(flightsFound.length > 0) {
+                    // Departure
+                    const dep = flightsFound[0];
+                    newData.flights[0] = {
+                        type: "去程",
+                        airline: getAirlineName(dep[2]), 
+                        code: dep[2],
+                        date: dep[1].slice(5), 
+                        depTime: dep[5],
+                        depAirport: dep[3], 
+                        arrTime: dep[6],
+                        arrAirport: dep[4]
+                    };
+
+                    if(flightsFound.length > 1) {
+                        // Return
+                        const ret = flightsFound[1];
+                        newData.flights[1] = {
+                            type: "回程",
+                            airline: getAirlineName(ret[2]),
+                            code: ret[2],
+                            date: ret[1].slice(5),
+                            depTime: ret[5],
+                            depAirport: ret[3], 
+                            arrTime: ret[6],
+                            arrAirport: ret[4] 
+                        };
+                    }
+                }
+
+                // 3. Hotels & Itinerary - 修正住宿資訊解析
+                // 嘗試抓取包含電話號碼的行，並假設該行包含飯店名稱
+                const lines = fullText.split('\n');
+                let currentDayIndex = 0;
+                
+                for(let i=0; i<lines.length; i++) {
+                    const line = lines[i];
+                    // 尋找電話號碼格式
+                    const telMatch = line.match(/(\d{2,4}-\d{2,4}-\d{4})/);
+                    
+                    if(telMatch) {
+                         // 排除領隊電話、機場專員電話
+                        if (line.includes("台灣手機") || line.includes("日本手機") || line.includes("機場專員")) {
+                            continue;
+                        }
+
+                        const tel = telMatch[1];
+                        // 簡單處理：移除電話號碼和可能的引號，剩下的當作飯店名稱
+                        let hotelName = line.replace(tel, '').replace(/[",]/g, '').trim();
+                        
+                        if(hotelName && currentDayIndex < newData.days.length) {
+                            newData.days[currentDayIndex].hotel = hotelName;
+                            newData.days[currentDayIndex].hotelTel = tel;
+                            currentDayIndex++;
+                        }
+                    }
+                }
+
+                setData(newData);
+                setStatus("總表解析完成，請檢查內容");
+            };
+            
+            // Helper for airline
+            function getAirlineName(code) {
+                if(code.startsWith('JX')) return '星宇航空';
+                if(code.startsWith('BR')) return '長榮航空';
+                if(code.startsWith('CI')) return '中華航空';
+                if(code.startsWith('IT')) return '台灣虎航';
+                if(code.startsWith('JL')) return '日本航空';
+                if(code.startsWith('NH')) return '全日空';
+                return code.substring(0, 2);
+            }
+
+            // 2. 詳表 PDF 解析
+            const handleDetailPdf = async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                setStatus("解析詳細行程 (景點/餐食)...");
+                const ab = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(ab).promise;
+                let text = "";
+                for(let i=1; i<=pdf.numPages; i++) {
+                    const p = await pdf.getPage(i);
+                    const t = await p.getTextContent();
+                    text += t.items.map(s=>s.str).join("") + "\n";
+                }
+
+                const chunks = text.split(/第\s*[一二三四五六七八九十0-9]+\s*天/);
+                const newDays = [...data.days];
+                
+                if(chunks.length > 1) {
+                    for(let i=1; i<chunks.length; i++) {
+                        const chunk = chunks[i];
+                        const dayIdx = i - 1;
+                        if(!newDays[dayIdx]) newDays[dayIdx] = { day: i, location: "東京", lat: 35.68, lon: 139.76, spots: [], meals: {b:"",l:"",d:""}, hotel: "", hotelTel: "", hotelAddress: "" };
+
+                        // Meals Logic Update: Use regex to extract until next keyword
+                        // Clean up common PDF extraction artifacts first
+                        let cleanChunk = chunk.replace(/","/g, "\n").replace(/"/g, "");
+                        
+                        const bMatch = cleanChunk.match(/早餐[:：]([\s\S]*?)(?=午餐|晚餐|住宿|酒店|旅館|行程|$)/);
+                        const lMatch = cleanChunk.match(/午餐[:：]([\s\S]*?)(?=晚餐|住宿|酒店|旅館|行程|$)/);
+                        const dMatch = cleanChunk.match(/晚餐[:：]([\s\S]*?)(?=住宿|酒店|旅館|行程|$)/);
+
+                        if(bMatch) newDays[dayIdx].meals.b = bMatch[1].trim();
+                        if(lMatch) newDays[dayIdx].meals.l = lMatch[1].trim();
+                        if(dMatch) newDays[dayIdx].meals.d = dMatch[1].trim();
+
+                        // Spots Logic
+                        const spots = [];
+                        // Improved Regex for 【Spot】Description
+                        const spotRegex = /【([^】]+)】([^【\n]+)/g;
+                        const matches = [...chunk.matchAll(spotRegex)];
+                        
+                        matches.forEach(m => {
+                            let desc = m[2].trim();
+                            if(desc.length > 150) desc = desc.substring(0, 150) + "...";
+                            spots.push({ name: m[1].trim(), desc: desc });
+                        });
+                        
+                        if(spots.length > 0) newDays[dayIdx].spots = spots;
+
+                        let loc = newDays[dayIdx].location;
+                        if(chunk.includes("名古屋")) loc="名古屋";
+                        else if(chunk.includes("高山")) loc="高山";
+                        else if(chunk.includes("白川")) loc="白川鄉";
+                        else if(chunk.includes("下呂")) loc="下呂";
+                        else if(chunk.includes("仙台")) loc="仙台";
+                        else if(chunk.includes("藏王")) loc="山形(藏王)";
+                        else if(chunk.includes("會津")) loc="福島(會津)";
+                        else if(chunk.includes("福岡")) loc="福岡";
+                        else if(chunk.includes("別府")) loc="別府";
+                        else if(chunk.includes("熊本")) loc="熊本";
+                        else if(chunk.includes("長崎")) loc="長崎";
+
+                        if(CITIES[loc]) {
+                            newDays[dayIdx].location = loc;
+                            newDays[dayIdx].lat = CITIES[loc].lat;
+                            newDays[dayIdx].lon = CITIES[loc].lon;
+                        }
+                    }
+                }
+                
+                setData({ ...data, days: newDays });
+                setStatus("詳細行程匯入完成！");
+            };
+
+            const download = () => {
+                const html = getClientHtml(data);
+                const blob = new Blob([html], {type: 'text/html'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `行程App_${data.tripName || '未命名'}.html`;
+                document.body.appendChild(a);
+                a.click();
+            };
+
+            return (
+                <div className="flex h-screen bg-gray-100">
+                    <div className="w-1/2 p-8 overflow-y-auto bg-white shadow-xl z-10">
+                        <h1 className="text-3xl font-bold text-gray-800 mb-2">說明會產生器 V31</h1>
+                        <p className="text-sm text-gray-500 mb-6">優化版：總表辨識修正 (日期/電話/航班/住宿)</p>
+
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                                <h3 className="font-bold text-blue-800 mb-2"><i class="fas fa-list-alt"></i> 1. 上傳總表</h3>
+                                <input type="file" accept=".pdf" onChange={handleSummaryPdf} className="text-sm w-full" />
+                            </div>
+                            <div className="bg-green-50 border border-green-200 p-4 rounded-xl">
+                                <h3 className="font-bold text-green-800 mb-2"><i class="fas fa-book-open"></i> 2. 上傳詳表</h3>
+                                <input type="file" accept=".pdf" onChange={handleDetailPdf} className="text-sm w-full" />
+                            </div>
+                        </div>
+
+                        {status && <div className="bg-yellow-50 text-yellow-700 p-2 rounded mb-4 text-sm text-center font-bold animate-pulse">{status}</div>}
+
+                        <hr className="my-6 border-gray-200" />
+                        
+                        {/* 基本資料編輯區 (新增) */}
+                        <div className="mb-6 border p-4 rounded-xl bg-indigo-50">
+                            <h3 className="font-bold text-indigo-800 mb-2">基本資料微調</h3>
+                            <div className="mb-3">
+                                <label className="text-xs text-gray-500 font-bold block mb-1">團體名稱</label>
+                                <input value={data.tripName} onChange={e=>updateData('tripName', e.target.value)} className="border p-1 rounded text-sm w-full font-bold" placeholder="團體名稱" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-500 font-bold block mb-1">團號</label>
+                                    <input value={data.tripCode} onChange={e=>updateData('tripCode', e.target.value)} className="border p-1 rounded text-sm w-full" placeholder="團號" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 font-bold block mb-1">出發日期 (首頁顯示)</label>
+                                    <input value={data.meeting.date} onChange={e=>updateData('meeting', {...data.meeting, date: e.target.value})} className="border p-1 rounded text-sm w-full" placeholder="YYYY/MM/DD" />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* 集合資訊編輯區 (上方) */}
+                        <div className="mb-6 border p-4 rounded-xl bg-gray-50">
+                            <h3 className="font-bold text-gray-700 mb-2">集合資訊微調</h3>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                <input value={data.meeting.time} onChange={e=>updateData('meeting', {...data.meeting, time: e.target.value})} className="border p-1 rounded text-sm" placeholder="集合時間" />
+                                <input value={data.meeting.badge} onChange={e=>updateData('meeting', {...data.meeting, badge: e.target.value})} className="border p-1 rounded text-sm" placeholder="識別牌顏色" />
+                            </div>
+                            <textarea value={data.meeting.location} onChange={e=>updateData('meeting', {...data.meeting, location: e.target.value})} className="border p-1 rounded text-sm w-full mb-2 h-16 resize-none" placeholder="集合地點"></textarea>
+                            <div className="grid grid-cols-2 gap-2">
+                                <input value={data.guide.name} onChange={e=>updateData('guide', {...data.guide, name: e.target.value})} className="border p-1 rounded text-sm w-full" placeholder="導遊姓名" />
+                                <input value={data.guide.twPhone} onChange={e=>updateData('guide', {...data.guide, twPhone: e.target.value})} className="border p-1 rounded text-sm w-full" placeholder="導遊電話" />
+                            </div>
+                        </div>
+
+                        {/* 航班詳細編輯區 (新增) */}
+                        <div className="mb-6 border p-4 rounded-xl bg-blue-50">
+                            <h3 className="font-bold text-blue-800 mb-2"><i class="fas fa-plane"></i> 航班資訊詳填</h3>
+                            {data.flights.map((f, idx) => (
+                                <div key={idx} className="mb-3 border-b pb-2 last:border-0">
+                                    <div className="flex justify-between font-bold text-sm mb-1">{f.type}</div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <input value={f.code} onChange={e=>updateFlight(idx, 'code', e.target.value)} className="border p-1 rounded font-bold text-blue-600" placeholder="航班代號 (例: JX838)" />
+                                        <input value={f.date} onChange={e=>updateFlight(idx, 'date', e.target.value)} className="border p-1 rounded" placeholder="日期" />
+                                        <input value={f.depTime} onChange={e=>updateFlight(idx, 'depTime', e.target.value)} className="border p-1 rounded" placeholder="出發時間" />
+                                        <input value={f.depAirport} onChange={e=>updateFlight(idx, 'depAirport', e.target.value)} className="border p-1 rounded" placeholder="出發機場" />
+                                        <input value={f.arrTime} onChange={e=>updateFlight(idx, 'arrTime', e.target.value)} className="border p-1 rounded" placeholder="抵達時間" />
+                                        <input value={f.arrAirport} onChange={e=>updateFlight(idx, 'arrAirport', e.target.value)} className="border p-1 rounded" placeholder="抵達機場" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* 須知編輯區 (含圖片路徑與PDF下載、服務費設定) */}
+                        <div className="mb-6 border p-4 rounded-xl bg-purple-50">
+                            <h3 className="font-bold text-purple-800 mb-2"><i class="fas fa-info-circle"></i> 須知內容編輯</h3>
+                            <div className="space-y-3">
+                                <div><label className="text-xs font-bold text-gray-500">天氣與穿著</label><textarea rows="2" value={data.info.weather} onChange={e=>updateInfo('weather', e.target.value)} className="w-full border rounded p-1 text-sm"></textarea></div>
+                                <div><label className="text-xs font-bold text-gray-500">貨幣匯率</label><textarea rows="2" value={data.info.currency} onChange={e=>updateInfo('currency', e.target.value)} className="w-full border rounded p-1 text-sm"></textarea></div>
+                                <div><label className="text-xs font-bold text-gray-500">行李/電壓/禁製品</label><textarea rows="2" value={data.info.baggage} onChange={e=>updateInfo('baggage', e.target.value)} className="w-full border rounded p-1 text-sm"></textarea></div>
+                                
+                                <div className="p-2 border border-yellow-300 bg-yellow-50 rounded">
+                                    <label className="text-xs font-bold text-yellow-700 mb-1 block">服務費設定</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" value={data.info.tips.currency} onChange={e=>updateInfo('tips', {...data.info.tips, currency: e.target.value})} className="border p-1 rounded text-xs w-1/3" placeholder="幣別 (例: 新台幣)" />
+                                        <input type="number" value={data.info.tips.perDay} onChange={e=>updateInfo('tips', {...data.info.tips, perDay: parseInt(e.target.value) || 0})} className="border p-1 rounded text-xs w-1/3" placeholder="每日金額" />
+                                        <input type="number" value={data.info.tips.days} onChange={e=>updateInfo('tips', {...data.info.tips, days: parseInt(e.target.value) || 0})} className="border p-1 rounded text-xs w-1/3" placeholder="天數" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 text-pink-600">圖片根目錄路徑 (選填)</label>
+                                    <input value={data.info.imageRoot} onChange={e=>updateInfo('imageRoot', e.target.value)} className="w-full border border-pink-200 rounded p-1 text-sm text-pink-600" placeholder="例如: images/ 或 ./assets/ (預設檔名 img1.jpg~img8.jpg)" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 text-blue-600">紙本說明會 PDF 路徑 (選填)</label>
+                                    <input value={data.info.pdfPath} onChange={e=>updateInfo('pdfPath', e.target.value)} className="w-full border border-blue-200 rounded p-1 text-sm text-blue-600" placeholder="例如: briefing.pdf (填寫後顯示下載按鈕)" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {data.days.map((day, dIdx) => (
+                                <div key={dIdx} className="border p-4 rounded-xl bg-gray-50 hover:bg-white transition-shadow shadow-sm">
+                                    <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                        <div className="flex gap-2 items-center flex-1">
+                                            <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">Day {day.day}</span>
+                                            <input value={day.date} onChange={e=>updateDay(dIdx, 'date', e.target.value)} className="border p-1 rounded text-sm w-16 text-center font-bold text-gray-500" placeholder="日期" />
+                                            <div className="flex gap-1 flex-1">
+                                                <select value={Object.keys(CITIES).find(k=>CITIES[k].lat===day.lat) || ''} onChange={e=>updateDay(dIdx, 'location', e.target.value)} className="border p-1 rounded text-sm bg-orange-50 font-bold text-orange-700 w-24">
+                                                    {Object.keys(CITIES).map(c=><option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                                <input value={day.location} onChange={e=>updateDay(dIdx, 'location', e.target.value)} className="border p-1 rounded text-sm w-full" placeholder="自訂地點" />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 ml-2">
+                                            <button onClick={()=>addSpot(dIdx)} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"><i className="fas fa-plus"></i></button>
+                                            <button onClick={()=>removeDay(dIdx)} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 餐食微調 */}
+                                    <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+                                        <div><label className="text-gray-400 block mb-1">早餐</label><input value={day.meals.b} onChange={e=>updateDay(dIdx, 'meals', {...day.meals, b: e.target.value})} className="border p-1 rounded w-full" /></div>
+                                        <div><label className="text-gray-400 block mb-1">午餐</label><input value={day.meals.l} onChange={e=>updateDay(dIdx, 'meals', {...day.meals, l: e.target.value})} className="border p-1 rounded w-full" /></div>
+                                        <div><label className="text-gray-400 block mb-1">晚餐</label><input value={day.meals.d} onChange={e=>updateDay(dIdx, 'meals', {...day.meals, d: e.target.value})} className="border p-1 rounded w-full" /></div>
+                                    </div>
+
+                                    <div className="space-y-3 mb-3">
+                                        {day.spots.map((spot, sIdx) => (
+                                            <div key={sIdx} className="bg-white border rounded p-3 relative group">
+                                                <input value={spot.name} onChange={e=>updateDaySpot(dIdx, sIdx, 'name', e.target.value)} className="w-full font-bold text-gray-800 border-b mb-2 pb-1 outline-none text-sm" placeholder="景點名稱" />
+                                                <textarea rows="3" value={spot.desc} onChange={e=>updateDaySpot(dIdx, sIdx, 'desc', e.target.value)} className="w-full text-xs text-gray-500 outline-none resize-none" placeholder="景點介紹"></textarea>
+                                                <button onClick={()=>removeSpot(dIdx, sIdx)} className="absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2 text-xs mb-2">
+                                        <input value={day.hotel} onChange={e=>updateDay(dIdx, 'hotel', e.target.value)} className="flex-1 border p-1 rounded font-bold" placeholder="住宿飯店" />
+                                        <input value={day.hotelTel} onChange={e=>updateDay(dIdx, 'hotelTel', e.target.value)} className="w-24 border p-1 rounded" placeholder="電話" />
+                                    </div>
+                                    <div className="flex gap-2 text-xs">
+                                        <input value={day.hotelAddress} onChange={e=>updateDay(dIdx, 'hotelAddress', e.target.value)} className="flex-1 border p-1 rounded" placeholder="飯店地址 (輸入後才會顯示司機卡)" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="text-center mb-6 mt-4">
+                            <button onClick={addDay} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg border-2 border-dashed border-gray-400 w-full transition-colors">
+                                <i className="fas fa-plus-circle mr-1"></i> 新增一天行程 (Day {data.days.length + 1})
+                            </button>
+                        </div>
+
+                        <button onClick={download} className="w-full mt-8 bg-jp-indigo hover:bg-blue-800 text-white py-4 rounded-xl font-bold text-lg shadow-lg transition-transform active:scale-95">
+                            <i class="fas fa-download mr-2"></i> 匯出客戶端網頁 (HTML)
+                        </button>
+                    </div>
+
+                    <div className="w-1/2 bg-gray-200 flex items-center justify-center relative">
+                        <div className="phone-frame w-[375px] h-[750px]">
+                            <div className="phone-notch"></div>
+                            <iframe srcDoc={getClientHtml(data)} className="w-full h-full border-none"></iframe>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<GeneratorApp />);
+    </script>
+</body>
+</html>
