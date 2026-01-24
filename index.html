@@ -212,6 +212,18 @@
             // 計算總服務費
             const totalTips = (data.info.tips.perDay * data.info.tips.days).toLocaleString();
             
+            // 處理圖片路徑邏輯
+            let imageList = [];
+            const imgInput = data.info.imageRoot || "";
+            // 如果輸入包含逗號或換行，視為列表
+            if (imgInput.includes(",") || imgInput.includes("\n") || (imgInput.includes("http") && !imgInput.endsWith("/"))) {
+                imageList = imgInput.split(/[\n,]+/).map(s => s.trim()).filter(s => s);
+            } else if (imgInput) {
+                // 舊版模式：視為資料夾，預設抓取 img1.jpg ~ img8.jpg
+                const path = imgInput.endsWith('/') ? imgInput : imgInput + '/';
+                imageList = [1,2,3,4,5,6,7,8].map(i => `${path}img${i}.jpg`);
+            }
+            
             const htmlParts = [
                 '<!DOCTYPE html>',
                 '<html lang="zh-TW">',
@@ -429,13 +441,13 @@
                 '                </div>',
                 '            </div>',
                 '',
-                data.info.imageRoot ? `
+                imageList.length > 0 ? `
                 <div class="bg-white dark:bg-jp-card-dark rounded-xl p-5 card-shadow transition-colors mt-4">
-                    <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3"><i class="fas fa-images text-pink-500 mr-2"></i>旅途相簿</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        ${[1,2,3,4,5,6,7,8].map(i => `<img src="${data.info.imageRoot}/img${i}.jpg" onerror="this.style.display='none'" class="w-full h-24 object-cover rounded-lg shadow-sm">`).join('')}
+                    <h3 class="font-bold text-gray-800 dark:text-gray-100 mb-3"><i class="fas fa-images text-pink-500 mr-2"></i>注意事項</h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        ${imageList.map(url => `<img src="${url}" onerror="this.style.display='none'" class="w-full h-auto object-contain rounded-lg shadow-sm">`).join('')}
                     </div>
-                    <p class="text-[10px] text-gray-400 mt-2 text-center">需確認圖片檔案路徑正確</p>
+                    <p class="text-[10px] text-gray-400 mt-2 text-center">圖片載入中...</p>
                 </div>` : '',
                 '',
                 data.info.pdfPath ? `
@@ -1489,8 +1501,8 @@
                                 </div>
 
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 text-pink-600">圖片根目錄路徑 (選填)</label>
-                                    <input value={data.info.imageRoot} onChange={e=>updateInfo('imageRoot', e.target.value)} className="w-full border border-pink-200 rounded p-1 text-sm text-pink-600" placeholder="例如: images/ 或 ./assets/ (預設檔名 img1.jpg~img8.jpg)" />
+                                    <label className="text-xs font-bold text-gray-500 text-pink-600">圖片網址 / 注意事項圖片 (可多張，換行分隔)</label>
+                                    <textarea rows="4" value={data.info.imageRoot} onChange={e=>updateInfo('imageRoot', e.target.value)} className="w-full border border-pink-200 rounded p-1 text-sm text-pink-600" placeholder="https://example.com/note1.jpg&#10;https://example.com/note2.jpg&#10;或是輸入資料夾路徑 (例如 images/)"></textarea>
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 text-blue-600">紙本說明會 PDF 路徑 (選填)</label>
