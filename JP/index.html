@@ -1152,6 +1152,11 @@
         const GeneratorApp = () => {
             const [data, setData] = useState(DEFAULT_DATA);
             const [status, setStatus] = useState("");
+            
+            // New state for PDF URLs and Tab Navigation
+            const [summaryPdfUrl, setSummaryPdfUrl] = useState(null);
+            const [detailPdfUrl, setDetailPdfUrl] = useState(null);
+            const [rightTab, setRightTab] = useState('preview'); // 'preview', 'summary', 'detail'
 
             const updateData = (field, value) => setData(prev => ({ ...prev, [field]: value }));
             const updateInfo = (field, value) => setData(prev => ({ ...prev, info: { ...prev.info, [field]: value } }));
@@ -1225,6 +1230,12 @@
             const handleSummaryPdf = async (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
+                
+                // Store Blob URL for preview
+                const url = URL.createObjectURL(file);
+                setSummaryPdfUrl(url);
+                setRightTab('summary'); // Switch tab automatically
+
                 setStatus("解析總表 PDF...");
                 
                 const ab = await file.arrayBuffer();
@@ -1369,6 +1380,12 @@
             const handleDetailPdf = async (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
+                
+                // Store Blob URL for preview
+                const url = URL.createObjectURL(file);
+                setDetailPdfUrl(url);
+                setRightTab('detail'); // Switch tab automatically
+
                 setStatus("解析詳細行程 (景點/餐食)...");
                 const ab = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument(ab).promise;
@@ -1618,10 +1635,65 @@
                         </button>
                     </div>
 
-                    <div className="w-1/2 bg-gray-200 flex items-center justify-center relative">
-                        <div className="phone-frame w-[375px] h-[750px]">
-                            <div className="phone-notch"></div>
-                            <iframe srcDoc={getClientHtml(data)} className="w-full h-full border-none"></iframe>
+                    <div className="w-1/2 bg-gray-200 flex flex-col h-screen">
+                        {/* Right Tabs */}
+                        <div className="flex border-b bg-white">
+                            <button 
+                                className={`flex-1 py-3 font-bold text-sm ${rightTab === 'preview' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
+                                onClick={() => setRightTab('preview')}
+                            >
+                                <i className="fas fa-mobile-alt mr-2"></i> 即時預覽
+                            </button>
+                            <button 
+                                className={`flex-1 py-3 font-bold text-sm ${rightTab === 'summary' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
+                                onClick={() => setRightTab('summary')}
+                            >
+                                <i className="fas fa-file-pdf mr-2"></i> 總表 PDF
+                            </button>
+                            <button 
+                                className={`flex-1 py-3 font-bold text-sm ${rightTab === 'detail' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
+                                onClick={() => setRightTab('detail')}
+                            >
+                                <i className="fas fa-file-alt mr-2"></i> 詳表 PDF
+                            </button>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-hidden relative bg-gray-200">
+                            {rightTab === 'preview' && (
+                                <div className="w-full h-full flex items-center justify-center p-4">
+                                    <div className="phone-frame w-[375px] h-[750px] shadow-2xl relative bg-white scale-90 sm:scale-100 transition-transform origin-center">
+                                        <div className="phone-notch"></div>
+                                        <iframe srcDoc={getClientHtml(data)} className="w-full h-full border-none rounded-[2rem]"></iframe>
+                                    </div>
+                                </div>
+                            )}
+
+                            {rightTab === 'summary' && (
+                                <div className="w-full h-full p-4">
+                                    {summaryPdfUrl ? (
+                                        <iframe src={summaryPdfUrl} className="w-full h-full rounded-xl shadow-lg border bg-white"></iframe>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                            <i className="fas fa-file-pdf text-6xl mb-4 opacity-30"></i>
+                                            <p>尚未上傳總表 PDF</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {rightTab === 'detail' && (
+                                <div className="w-full h-full p-4">
+                                    {detailPdfUrl ? (
+                                        <iframe src={detailPdfUrl} className="w-full h-full rounded-xl shadow-lg border bg-white"></iframe>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                            <i className="fas fa-file-alt text-6xl mb-4 opacity-30"></i>
+                                            <p>尚未上傳詳表 PDF</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
