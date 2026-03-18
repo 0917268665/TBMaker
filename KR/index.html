@@ -95,9 +95,19 @@
             ],
             info: {
                 weather: "韓國四季分明，春秋早晚溫差大。冬季寒冷乾燥，需備妥保暖衣物。",
-                currency: "韓幣 (KRW)。建議在台灣先換美金，到韓國機場或市區換錢所兌換韓幣匯率較佳。",
+                currency: "韓幣 (KRW)。建議在台灣先換好，韓國導遊不提供換錢服務，機場或鬧區有換錢所可以換匯。",
                 voltage: "220V 兩孔圓形插座 (豬鼻子)。",
-                baggage: "嚴禁攜帶肉類製品入境。行動電源請隨身攜帶。",
+                baggage: `嚴禁攜帶肉類入境。行動電源請隨身攜帶。每人托運行李1件23公斤，手提行李一件7公斤。<br><br>泡麵可以帶回台灣嗎？<br>
+泡麵方面，基本上「沖泡即食」類型的泡麵、泡飯、速食米粉、速食粥等產品，均屬於免施檢疫範圍，旅客可以安心購買。<br>但如果是附有肉類零食的泡麵組合，例如火腿腸、鳳爪等等，就不能攜帶回來。<br><br>防檢署提醒，泡麵這類產品樣態種類多且不斷推陳出新，旅客如果有任何疑慮，可以直接到「動植物檢疫」櫃檯洽詢，由現場的檢疫人員確認檢查。即使經檢查發現產品無法攜帶入境，只要旅客主動申報並配合相關處理程序，就不會遭受處罰。<br><br>
+５種台灣禁止入境食物<br>
+防檢署明確指出幾類絕對禁止攜帶的產品：<br>
+１. 溏心蛋、溫泉蛋等未完全煮熟的蛋類製品<br>
+２. 各種生鮮水果，包含飛機餐提供的水果<br>
+３. 雞肉蛋白棒<br>
+４. 雞皮零食<br>
+５. 含有肉類的三明治、飯糰、麵包等產品<br><br>
+🔥防檢署Line官方帳號🔥<a href="https://lin.ee/53trW2m">https://lin.ee/53trW2m(點擊開啟)</a><br>
+只要在聊天室輸入『物品名稱』，系統就會告訴你檢疫規定！`,
                 imageRoot: "",
                 pdfPath: "",
                 surveyUrl: "",
@@ -375,6 +385,11 @@
                 '            </div>',
                 '',
                 '            <div class="space-y-3">',
+                '                <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl">',
+                '                    <i class="fas fa-clock text-purple-500 text-xl mb-2"></i>',
+                '                    <h4 class="font-bold text-sm text-gray-700 dark:text-gray-200">時差</h4>',
+                `                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">日本與台灣時差一小時，日本比台灣快一小時（例如：台灣時間早上 9 點，日本為早上 10 點）。</p>`,
+                '                </div>',
                 '                <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl">',
                 '                    <i class="fas fa-sun text-orange-500 text-xl mb-2"></i>',
                 '                    <h4 class="font-bold text-sm text-gray-700 dark:text-gray-200">天氣穿著</h4>',
@@ -427,7 +442,7 @@
                 '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
                 '                                <input type="checkbox" id="check_doc_money" class="hidden" onchange="saveCheck(this.id)">',
                 '                                <div class="w-4 h-4 border-2 border-gray-300 rounded flex items-center justify-center transition-colors"></div>',
-                '                                <span class="text-sm text-gray-600 dark:text-gray-300">韓幣/美金</span>',
+                '                                <span class="text-sm text-gray-600 dark:text-gray-300">韓幣現金</span>',
                 '                            </label>',
                 '                            <label class="flex items-center space-x-2 cursor-pointer custom-checkbox">',
                 '                                <input type="checkbox" id="check_doc_vjw" class="hidden" onchange="saveCheck(this.id)">',
